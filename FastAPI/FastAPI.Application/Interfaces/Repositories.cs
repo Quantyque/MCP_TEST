@@ -3,28 +3,25 @@ using FastAPI.Domain.Entities;
 namespace FastAPI.Application.Interfaces;
 
 /// <summary>
-/// Interface pour le dépôt des étudiants.
+/// Interface pour le dépôt des utilisateurs.
 /// </summary>
-public interface IStudentRepository
+public interface IUserRepository
 {
-    /// <summary>
-    /// Récupère tous les étudiants.
-    /// </summary>
-    Task<List<Student>> GetAllAsync();
+    Task<List<User>> GetAllAsync();
+    Task<User?> GetByIdAsync(Guid id);
+    Task<User?> GetByEmailAsync(string email);
+    Task AddAsync(User user);
+    Task SaveChangesAsync();
+}
 
-    /// <summary>
-    /// Récupère un étudiant par son ID.
-    /// </summary>
-    Task<Student?> GetByIdAsync(Guid id);
-
-    /// <summary>
-    /// Ajoute un étudiant.
-    /// </summary>
-    Task AddAsync(Student student);
-
-    /// <summary>
-    /// Sauvegarde les changements.
-    /// </summary>
+/// <summary>
+/// Interface pour le dépôt des bâtiments.
+/// </summary>
+public interface IBuildingRepository
+{
+    Task<List<Building>> GetAllAsync();
+    Task<Building?> GetByIdAsync(Guid id);
+    Task AddAsync(Building building);
     Task SaveChangesAsync();
 }
 
@@ -33,13 +30,7 @@ public interface IStudentRepository
 /// </summary>
 public interface IEvaluationRepository
 {
-    /// <summary>
-    /// Ajoute une évaluation.
-    /// </summary>
     Task AddAsync(Evaluation evaluation);
-
-    /// <summary>
-    /// Sauvegarde les changements.
-    /// </summary>
+    Task<List<Evaluation>> GetByStudentIdAsync(Guid studentId);
     Task SaveChangesAsync();
 }

@@ -1,5 +1,5 @@
 using FastAPI.Application.DTOs;
-using FastAPI.Application.Services;
+using FastAPI.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastAPI.API.Controllers;
@@ -13,10 +13,6 @@ public class EvaluationsController : ControllerBase
 {
     private readonly IEvaluationService _evaluationService;
 
-    /// <summary>
-    /// Initialise une nouvelle instance de la classe <see cref="EvaluationsController"/>.
-    /// </summary>
-    /// <param name="evaluationService">Le service de gestion des évaluations.</param>
     public EvaluationsController(IEvaluationService evaluationService)
     {
         _evaluationService = evaluationService;

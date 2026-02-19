@@ -1,83 +1,67 @@
-# Serveur MCP d'Évaluation Étudiante
+# MCP_TEST Project
 
-Cette solution contient une implémentation C# d'un serveur **Model Context Protocol (MCP)** qui s'interface avec une API backend d'évaluation des étudiants.
+Ce dépôt contient deux solutions interconnectées pour tester l'architecture **Model Context Protocol (MCP)** avec une **API REST**.
 
 ## Structure du Projet
 
-- **McpServer** : Application console .NET implémentant le protocole MCP (JSON-RPC sur Stdio).
-- **FastAPI.API** : Backend API ASP.NET Core (fournit les données).
+*   **FastAPI** (\`./FastAPI\`):
+    *   **Description** : Une API Web ASP.NET Core (Clean Architecture) qui sert de "Backend" ou de système cible.
+    *   **Rôle** : Simule votre application métier réelle (Gestion d'utilisateurs, bâtiments, évaluations).
+    *   **Tech** : .NET 8, Entity Framework Core, PostgreSQL (ou In-Memory/SQLite pour test), Swagger.
+
+*   **McpServer** (\`./McpServer\`):
+    *   **Description** : Une application Console .NET 8 implémentant le protocole MCP.
+    *   **Rôle** : Agit comme un **agent/interface** pour les LLM (Claude, etc.). Il transforme les requêtes de l'IA ("Crée un utilisateur") en appels API vers `FastAPI`.
+    *   **Tech** : .NET 8, ModelContextProtocol.NET SDK.
 
 ## Prérequis
 
-- .NET 8.0/9.0 SDK
-- Node.js (requis pour l'inspecteur MCP)
+1.  **SDK .NET 8.0** ou supérieur.
+2.  **Node.js & npm** (Requis uniquement pour lancer l'inspecteur de debug via `npx`).
+3.  Une base de données PostgreSQL (si configurée dans `appsettings.json` de FastAPI), sinon assurez-vous que les migrations peuvent s'appliquer.
 
-## Installation et Démarrage
+## Démarrage Rapide
 
-Pour tester et utiliser le serveur MCP, vous devez lancer deux composants : l'API (Backend) et le Serveur MCP (via l'inspecteur).
+### 1. Lancer l'API FastAPI
+C'est le serveur qui doit tourner en fond.
 
-### Étape 1 : Démarrer l'API
+```bash
+cd FastAPI
+dotnet run --project FastAPI.API
+```
+*L'API sera accessible sur `http://localhost:5000` (ou le port configuré).*
 
-Le serveur MCP doit pouvoir communiquer avec l'API.
+### 2. Lancer le Serveur MCP (Mode Debug / Inspecteur)
+Pour tester les outils manuellement avec une interface Web.
 
-1. Ouvrez un terminal.
-2. Démarrez l'API sur le port **5110** :
-   ```powershell
-   dotnet run --project FastAPI/FastAPI.API/FastAPI.API.csproj --urls=http://localhost:5110
-   ```
-3. Laissez ce terminal ouvert.
+Ouvrez un **nouveau terminal** :
 
-### Étape 2 : Démarrer l'Inspecteur MCP
+```bash
+cd McpServer
+dotnet run
+```
 
-L'inspecteur est l'interface client qui va "exécuter" votre serveur MCP et vous permettre d'interagir avec.
+> **Note** : En mode `DEBUG`, le serveur détectera qu'il est lancé dans une console et lancera automatiquement `npx @modelcontextprotocol/inspector` dans une nouvelle fenêtre. L'interface d'inspection s'ouvrira dans votre navigateur.
 
-1. Ouvrez un **nouveau** terminal (en administrateur de préférence).
-2. Vérifiez que le projet est bien compilé :
-   ```powershell
-   dotnet build McpServer/McpServer.csproj
-   ```
-3. Lancez l'inspecteur en utilisant le **chemin absolu** vers l'exécutable compilé (modifiez le chemin d'utilisateur si nécessaire) :
-   ```bash
-   npx @modelcontextprotocol/inspector "c:\Users\richa\source\repos\MCP_TEST\McpServer\bin\Debug\net9.0\McpServer.exe"
-   ```
-4. Attendez que l'URL (ex: `http://localhost:5173`) s'affiche et ouvrez-la dans votre navigateur.
+### 3. Utilisation avec un Client MCP (ex: Claude Desktop)
+Configurez votre client pour exécuter l'exécutable compilé :
 
-### Étape 3 : Configuration de l'Interface Web
+```json
+{
+  "mcpServers": {
+    "my-csharp-server": {
+      "command": "dotnet",
+      "args": ["C:\\path\\to\\McpServer.dll"]
+    }
+  }
+}
+```
 
-Une fois sur la page de l'inspecteur :
+## Authentification
+Le serveur MCP nécessite une authentification pour la plupart des actions.
+1. Dans l'inspecteur ou via l'IA, utilisez l'outil `login` avec un email/mot de passe valide (ex: créés par le `DataSeeder` de FastAPI).
+2. Le token sera stocké en mémoire pour la durée de la session du processus McpServer.
 
-1. Vérifiez que **Transport Type** est sur `STDIO`.
-2. Dans le champ **Command**, assurez-vous d'avoir le chemin absolu vers l'exécutable :
-   `c:\Users\richa\source\repos\MCP_TEST\McpServer\bin\Debug\net9.0\McpServer.exe`
-3. Le champ **Arguments** doit être **vide**.
-4. Cliquez sur le bouton **`▷ Connect`**.
-
-Le point "Disconnected" doit passer au vert ("Connected") et l'onglet **Tools** doit apparaître.
-
-## Outils Disponibles
-
-Une fois connecté, vous pouvez tester les outils suivants :
-
-- **`ping_api`**
-  - Vérifie la connectivité avec l'API backend.
-  - *Retour attendu* : `{"status": "ok", "statusCode": 200, ...}`
-
-- **`list_competencies`**
-  - Récupère la liste des compétences définies dans l'API.
-  - *Retour attendu* : Une liste JSON (ex: `[{"id": 0, "name": "SavoirEtre"}, ...]`).
-
-- **`get_student`**
-  - Récupère les détails d'un étudiant.
-  - *Paramètre* : `studentId` (UUID de l'étudiant).
-  - *Note* : Si l'étudiant n'existe pas, l'API renverra une erreur (ce qui confirme que la communication fonctionne).
-
-## Configuration
-
-Le serveur MCP est configuré via le fichier `McpServer/appsettings.json`.
-- `ApiBaseUrl` : URL de l'API cible (actuellement configurée sur `http://localhost:5110`).
-
-## Notes Techniques
-
-- **Protocole** : Le serveur implémente une boucle JSON-RPC personnalisée sur l'entrée/sortie standard (stdio).
-- **Logs** : La journalisation est redirigée (ou supprimée) de la sortie standard (stdout) pour ne pas corrompre le protocole JSON-RPC.
-- **Sérialisation** : Utilise `System.Text.Json` configuré pour ignorer les valeurs nulles (évite les erreurs de validation strictes de l'inspecteur).
+## Développement
+*   Les outils sont définis dans `McpServer/Tools/`.
+*   Le service client est dans `McpServer/Services/McpClientService.cs`.

@@ -1,7 +1,7 @@
 namespace FastAPI.Domain.Entities;
 
 /// <summary>
-/// Représente une évaluation d'un étudiant.
+/// Représente une évaluation.
 /// </summary>
 public class Evaluation
 {
@@ -20,16 +20,17 @@ public class Evaluation
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
-    // Foreign Key
     /// <summary>
-    /// Identifiant de l'étudiant associé.
+    /// L'étudiant évalué.
     /// </summary>
     public Guid StudentId { get; set; }
+    public User Student { get; set; } = null!;
 
     /// <summary>
-    /// L'étudiant associé à cette évaluation.
+    /// L'enseignant qui a créé l'évaluation.
     /// </summary>
-    public Student Student { get; set; } = null!;
+    public Guid TeacherId { get; set; }
+    public User Teacher { get; set; } = null!;
 
     /// <summary>
     /// Liste des critères évalués.
