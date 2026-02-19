@@ -38,10 +38,14 @@ Ouvrez un **nouveau terminal** :
 
 ```bash
 cd McpServer
-dotnet run
+dotnet build
+# Lancer l'exécutable généré directement (mode Debug)
+.\bin\Debug\net8.0\win-x64\McpServer.exe
 ```
 
-> **Note** : En mode `DEBUG`, le serveur détectera qu'il est lancé dans une console et lancera automatiquement `npx @modelcontextprotocol/inspector` dans une nouvelle fenêtre. L'interface d'inspection s'ouvrira dans votre navigateur.
+> **Note importante** : En mode `DEBUG`, l'application détecte qu'elle est lancée dans une console interactive. Elle lancera automatiquement l'inspecteur MCP (`npx @modelcontextprotocol/inspector`) qui ouvrira une fenêtre de navigateur pour tester les outils.
+
+> **Note sur les Outils** : Les outils sont maintenant définis avec des attributs `[McpServerTool]`. Assurez-vous que le projet compile bien avant de lancer.
 
 ### 3. Utilisation avec un Client MCP (ex: Claude Desktop)
 Configurez votre client pour exécuter l'exécutable compilé :

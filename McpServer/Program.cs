@@ -9,12 +9,25 @@ namespace McpServer
         static async Task Main(string[] args)
         {
 #if DEBUG
-            // Si l'entrée n'est pas redirigée, on est lancé directement (pas par l'Inspector)
-            // On lance donc l'Inspector qui va lui-même relancer ce process en subprocess
-            if (!Console.IsInputRedirected)
+            // Fichier de log pour capturer tout ce qui se passe
+            var logPath = Path.Combine(AppContext.BaseDirectory, "debug.log");
+            File.WriteAllText(logPath, $"[{DateTime.Now}] Démarrage. Args: {string.Join(", ", args)}\n");
+
+            bool isSubprocess = args.Contains("--mcp-subprocess");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] isSubprocess: {isSubprocess}\n");
+
+            if (!isSubprocess)
             {
-                var processPath = Environment.ProcessPath
-                    ?? throw new InvalidOperationException("Impossible de déterminer le chemin de l'exécutable.");
+                var processPath = Environment.ProcessPath;
+                File.AppendAllText(logPath, $"[{DateTime.Now}] ProcessPath: {processPath}\n");
+
+                if (processPath == null)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] ERREUR: ProcessPath est null\n");
+                    Console.WriteLine("ERREUR: Impossible de déterminer le chemin de l'exécutable.");
+                    Console.ReadKey();
+                    return;
+                }
 
                 Console.WriteLine("DEBUG MODE: Lancement du MCP Inspector...");
                 Console.WriteLine($"Executable: {processPath}");
@@ -22,60 +35,80 @@ namespace McpServer
                 var psi = new ProcessStartInfo
                 {
                     FileName = "cmd",
-                    Arguments = $"/c npx @modelcontextprotocol/inspector \"{processPath}\"",
-                    UseShellExecute = true,   // true = ouvre une nouvelle fenêtre cmd visible
+                    Arguments = $"/k npx @modelcontextprotocol/inspector \"{processPath}\" --mcp-subprocess",
+                    UseShellExecute = true,
                     CreateNoWindow = false
                 };
 
                 try
                 {
-                    Process.Start(psi);
-                    // On quitte ce process : l'Inspector va relancer l'exe en subprocess
-                    // avec stdin redirigé, donc Console.IsInputRedirected sera true
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Tentative de lancement de l'Inspector...\n");
+                    var process = Process.Start(psi);
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Process lancé: {process?.Id}\n");
+
+                    Console.WriteLine("Inspector lancé. Appuie sur une touche pour fermer cette fenêtre...");
+                    Console.ReadKey(); // Garde la fenêtre ouverte pour voir les messages
                     return;
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"Échec du lancement de l'Inspector : {ex.Message}");
+                    var msg = $"[{DateTime.Now}] ERREUR lancement Inspector: {ex}\n";
+                    File.AppendAllText(logPath, msg);
+                    Console.Error.WriteLine(msg);
                     Console.WriteLine("Appuie sur une touche pour quitter...");
                     Console.ReadKey();
                     return;
                 }
             }
 
-            Console.Error.WriteLine("DEBUG: Process lancé en tant que subprocess MCP (stdin redirigé).");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Démarrage en mode subprocess MCP\n");
+            Console.Error.WriteLine("DEBUG: Subprocess MCP démarré.");
 #endif
 
-            var builder = Host.CreateApplicationBuilder(args);
+            try
+            {
+                var builder = Host.CreateApplicationBuilder(args);
 
-            builder.Configuration
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true);
+                builder.Configuration
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true);
 
-            builder.Services.AddLogging(configure =>
+                builder.Services.AddLogging(configure =>
+                {
+#if DEBUG
+                    configure.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+#else
+                    configure.AddConsole();
+#endif
+                    configure.SetMinimumLevel(LogLevel.Debug);
+                });
+
+                builder.Services.AddHttpClient();
+                builder.Services.AddSingleton<McpClientService>();
+
+                builder.Services
+                    .AddMcpServer()
+                    .WithStdioServerTransport()
+                    .WithTools<AuthTools>()
+                    .WithTools<UserTools>()
+                    .WithTools<BuildingTools>()
+                    .WithTools<EvaluationTools>()
+                    .WithTools<CompetencyTools>();
+
+#if DEBUG
+                File.AppendAllText(logPath, $"[{DateTime.Now}] Services configurés, démarrage du host...\n");
+#endif
+                await builder.Build().RunAsync();
+            }
+            catch (Exception ex)
             {
 #if DEBUG
-                // En debug, on log uniquement sur stderr pour ne pas polluer stdout (protocole MCP)
-                configure.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
-#else
-                configure.AddConsole();
+                var logPath2 = Path.Combine(AppContext.BaseDirectory, "debug.log");
+                File.AppendAllText(logPath2, $"[{DateTime.Now}] EXCEPTION: {ex}\n");
 #endif
-                configure.SetMinimumLevel(LogLevel.Debug);
-            });
-
-            builder.Services.AddHttpClient();
-            builder.Services.AddSingleton<McpClientService>();
-
-            builder.Services
-                .AddMcpServer()
-                .WithStdioServerTransport()
-                .WithTools<AuthTools>()
-                .WithTools<UserTools>()
-                .WithTools<BuildingTools>()
-                .WithTools<EvaluationTools>()
-                .WithTools<CompetencyTools>();
-
-            await builder.Build().RunAsync();
+                Console.Error.WriteLine($"EXCEPTION FATALE: {ex}");
+                Console.ReadKey();
+            }
         }
     }
 }
