@@ -88,7 +88,7 @@ namespace McpServer
 
                 builder.Services
                     .AddMcpServer()
-                    .WithStdioServerTransport()
+                    .WithHttpTransport()
                     .WithTools<AuthTools>()
                     .WithTools<UserTools>()
                     .WithTools<BuildingTools>()

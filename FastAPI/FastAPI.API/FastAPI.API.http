@@ -1,6 +1,0 @@
-@FastAPI.API_HostAddress = http://localhost:5110
-
-GET {{FastAPI.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
