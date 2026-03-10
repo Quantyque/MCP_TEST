@@ -1,0 +1,36 @@
+version: '3.4'
+
+services:
+  fastapi-db:
+    image: postgres:15-alpine
+    container_name: fastapi-db-container
+    environment:
+      POSTGRES_DB: fastapi_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fastapi-api:
+    image: fastapi-api
+    build:
+      context: .
+      dockerfile: FastAPI.API/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=fastapi-db-container;Port=5432;Database=fastapi_db;Username=postgres;Password=yourpassword;Include Error Detail=true
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      fastapi-db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

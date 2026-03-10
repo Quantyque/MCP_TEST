@@ -9,7 +9,7 @@ using McpServer.Models;
 namespace McpServer.Services
 {
     /// <summary>
-    /// Service responsable de la communication avec l'API et de la gestion de l'authentification.
+    /// Service responsable de la communication avec l'API FastAPI et de la gestion de l'authentification.
     /// </summary>
     public class McpClientService
     {
@@ -20,7 +20,7 @@ namespace McpServer.Services
         public McpClientService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _baseUrl = configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5110";
+            _baseUrl = configuration["ApiBaseUrl"] ?? "http://localhost:5000";
         }
 
         private void EnsureAuthenticated()
